@@ -1,0 +1,601 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Health Card</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; margin: 22px; color: #111; }
+  h1 { margin: 0 0 6px 0; }
+  .sub { color: #555; margin-bottom: 14px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card { border: 1px solid #ddd; border-radius: 12px; padding: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl th, .tbl td { border: 1px solid #ddd; padding: 6px 8px; vertical-align: top; }
+  .tbl th { background: #f6f6f6; text-align: left; }
+  .muted { color: #666; font-size: 13px; }
+  pre.scroll { max-height: 220px; overflow: auto; background: #0b1020; color: #e7eefc; padding: 10px; border-radius: 10px; font-size: 12px; }
+  .full { grid-column: 1 / -1; }
+
+  .thumb-grid { display: grid; gap: 6px; }
+  .thumb { display: block; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; background: #fff; }
+  .thumb img { width: 100%; object-fit: cover; display: block; }
+
+  .floating {
+    position: fixed; right: 14px; bottom: 14px;
+    width: 340px; max-height: 44vh; overflow: auto;
+    border: 1px solid #ddd; border-radius: 14px;
+    background: rgba(255,255,255,0.96);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+    padding: 10px; z-index: 9999;
+  }
+  .floating h3 { margin: 0 0 8px 0; font-size: 13px; color: #222; }
+  @media (max-width: 900px) {
+    .floating { position: static; width: auto; max-height: none; box-shadow: none; }
+  }
+
+  .gradebox {
+    margin: 10px auto 14px auto;
+    max-width: 520px;
+    border: 1px solid #ddd;
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: #ffffff;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+  }
+  .gtitle {
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .gtbl {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .gtbl th, .gtbl td {
+    border: 1px solid #e2e2e2;
+    padding: 6px 8px;
+    text-align: center;
+  }
+  .gtbl th {
+    background: #f7f7f7;
+    text-align: center;
+  }
+  .gcell {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+  }
+  .gmeta {
+    margin-top: 6px;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<h1>Health Card Report</h1>
+<div class="sub">Coordinate: <b>(39.195158, -76.941963)</b> &nbsp; | &nbsp; Nearest SITEYR: <b>HO-P-069-229-97</b></div>
+
+
+    <div class="gradebox">
+      <div class="gtitle">Report Card</div>
+      <table class="gtbl">
+        <tr><th></th><th>Current</th><th>Potential</th></tr>
+        <tr><td><b>DNR12</b></td><td class="gcell">B</td><td class="gcell">A</td></tr>
+        <tr><td><b>MDE8</b></td><td class="gcell">C</td><td class="gcell">A</td></tr>
+      </table>
+      <div class="gmeta">
+        Pressure: <b>33.3%</b> &nbsp; | &nbsp;
+        Δ potential: <b>-0.002</b>
+      </div>
+      <div class="muted" style="margin-top:6px;">
+        Current = measured condition (with pressure penalty). Potential credits best-scenario recovery.
+      </div>
+    </div>
+    
+
+<div class="floating">
+  <h3>PDP plots (compact)</h3>
+  <div class="muted">Click to open full-size.</div>
+  <div class='thumb-grid' style='grid-template-columns: repeat(2, 1fr);'><a class='thumb' href='figs/pdp_FOREST.png' target='_blank' title='pdp_FOREST.png'><img style='height:78px;' src='figs/pdp_FOREST.png'/></a><a class='thumb' href='figs/pdp_Habitat__BANKSTAB.png' target='_blank' title='pdp_Habitat__BANKSTAB.png'><img style='height:78px;' src='figs/pdp_Habitat__BANKSTAB.png'/></a><a class='thumb' href='figs/pdp_Habitat__EMBEDDED.png' target='_blank' title='pdp_Habitat__EMBEDDED.png'><img style='height:78px;' src='figs/pdp_Habitat__EMBEDDED.png'/></a><a class='thumb' href='figs/pdp_LandUse__ACREAGE.png' target='_blank' title='pdp_LandUse__ACREAGE.png'><img style='height:78px;' src='figs/pdp_LandUse__ACREAGE.png'/></a><a class='thumb' href='figs/pdp_LandUse__FOREST.png' target='_blank' title='pdp_LandUse__FOREST.png'><img style='height:78px;' src='figs/pdp_LandUse__FOREST.png'/></a><a class='thumb' href='figs/pdp_LandUse__IMPSURF.png' target='_blank' title='pdp_LandUse__IMPSURF.png'><img style='height:78px;' src='figs/pdp_LandUse__IMPSURF.png'/></a><a class='thumb' href='figs/pdp_LandUse__URBAN.png' target='_blank' title='pdp_LandUse__URBAN.png'><img style='height:78px;' src='figs/pdp_LandUse__URBAN.png'/></a><a class='thumb' href='figs/pdp_WaterChemistry__COND_FLD.png' target='_blank' title='pdp_WaterChemistry__COND_FLD.png'><img style='height:78px;' src='figs/pdp_WaterChemistry__COND_FLD.png'/></a><a class='thumb' href='figs/pdp_WaterChemistry__DO_FLD.png' target='_blank' title='pdp_WaterChemistry__DO_FLD.png'><img style='height:78px;' src='figs/pdp_WaterChemistry__DO_FLD.png'/></a><a class='thumb' href='figs/pdp_WaterChemistry__NO3_LAB.png' target='_blank' title='pdp_WaterChemistry__NO3_LAB.png'><img style='height:78px;' src='figs/pdp_WaterChemistry__NO3_LAB.png'/></a><a class='thumb' href='figs/pdp_WaterChemistry__PH_FLD.png' target='_blank' title='pdp_WaterChemistry__PH_FLD.png'><img style='height:78px;' src='figs/pdp_WaterChemistry__PH_FLD.png'/></a><a class='thumb' href='figs/pdp_WaterChemistry__TN.png' target='_blank' title='pdp_WaterChemistry__TN.png'><img style='height:78px;' src='figs/pdp_WaterChemistry__TN.png'/></a><a class='thumb' href='figs/pdp_WaterChemistry__TP.png' target='_blank' title='pdp_WaterChemistry__TP.png'><img style='height:78px;' src='figs/pdp_WaterChemistry__TP.png'/></a><a class='thumb' href='figs/pdp_WaterChemistry__TURB_FLD.png' target='_blank' title='pdp_WaterChemistry__TURB_FLD.png'><img style='height:78px;' src='figs/pdp_WaterChemistry__TURB_FLD.png'/></a></div>
+</div>
+
+<div class="grid">
+
+  <div class="card full">
+    <h2>StreamStats basin summary</h2>
+    <table class='tbl'><tr><th>DRNAREA</th><td>2.700 sq mi</td></tr><tr><th>IMP</th><td>2.780 %   (LC11IMP/IMPERV)</td></tr><tr><th>FOREST</th><td>12.100 %</td></tr><tr><th>PRECIP</th><td>45.100 in/yr</td></tr><tr><th>LIME</th><td>0.000 %</td></tr><tr><th>SOILCorD</th><td>27.300 %</td></tr><tr><th>SLOPE</th><td>0.054300 ft/ft  (prefers BSLDEM10ff)</td></tr></table><div class='muted'>Source: StreamStats text printed by the hydrology engine.</div>
+  </div>
+
+  <div class="card">
+    <h2>Watershed context</h2>
+    <ul><li><b>DNR12DIG:</b> 21311060960</li><li><b>MDE8:</b> 2131106</li><li><b>MDE8 Name:</b> Middle Patuxent River</li><li><b>Stream name:</b> PATUXENT</li><li><b>Province/Physio:</b> Piedmont Plateau Province</li></ul>
+  </div>
+
+  <div class="card">
+    <h2>Run status</h2>
+    <ul><li><b>hydraulics:</b> OK (rc=0)</li><li><b>hydrology:</b> FAILED (rc=1)</li><li><b>region:</b> OK (rc=0)</li></ul>
+    <div class="muted">Logs folder: OUT_HEALTH_CARD/Middle_Patuxent_River__MDE8_2131106/HealthCard_39.195158_-76.941963_20251230_122417/logs</div>
+  </div>
+
+  <div class="card full">
+    <h2>BIBI: observed vs predicted</h2>
+    <table border="1" class="dataframe tbl">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Observed BIBI (MBSS)</th>
+      <th>Predicted BIBI (Baseline)</th>
+      <th>Best Scenario BIBI</th>
+      <th>Residual (Obs-Pred)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>4.666667</td>
+      <td>4.173</td>
+      <td>4.171</td>
+      <td>0.493667</td>
+    </tr>
+  </tbody>
+</table>
+    <div class="muted">Observed from MBSS_Merged_All.csv by SITEYR; predicted from region model stdout.</div>
+  </div>
+
+  <div class="card">
+    <h2>Visit-discharge hydraulics (MBSS DischargeCFS)</h2>
+    <table class='tbl'><tr><th>DischargeCFS_visit</th><td>0.68</td></tr><tr><th>Q_C_m3s</th><td>0.01925545568256</td></tr><tr><th>AVGWID_m</th><td>3.23</td></tr><tr><th>AVGTHAL_m</th><td>0.26</td></tr><tr><th>Slope_m_m</th><td>0.008</td></tr><tr><th>Velocity_m_s_Q_over_A</th><td>0.0229286207222672</td></tr><tr><th>ShearStress_Pa_calc</th><td>17.569332629333328</td></tr><tr><th>StreamPowerPerLength_W_per_m_calc</th><td>1.5106521157550161</td></tr><tr><th>UnitStreamPower_W_per_m2_calc</th><td>0.46769415348452514</td></tr></table><div class='muted'>Slope source: hydraulics CSV Slope_m_m</div><div class='muted'>tau/Omega recomputed using visit discharge (Q_C_m3s) and resolved slope.</div>
+  </div>
+
+  <div class="card">
+    <h2>Habitat metrics (absolute + range)</h2>
+    <table border="1" class="dataframe tbl">
+  <thead>
+    <tr style="text-align: right;">
+      <th>HabitatMetric</th>
+      <th>Value</th>
+      <th>Direction</th>
+      <th>Percentile</th>
+      <th>RangeClass</th>
+      <th>QualLabel</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>EMBEDDED</td>
+      <td>20.000000</td>
+      <td>LowerBetter</td>
+      <td>82.957134</td>
+      <td>High (≥75th)</td>
+      <td>High</td>
+    </tr>
+    <tr>
+      <td>CHAN_ALT</td>
+      <td>7.000000</td>
+      <td>LowerBetter</td>
+      <td>76.839827</td>
+      <td>High (≥75th)</td>
+      <td>High</td>
+    </tr>
+    <tr>
+      <td>POOLQUAL</td>
+      <td>12.000000</td>
+      <td>HigherBetter</td>
+      <td>56.242223</td>
+      <td>Moderate (40–75th)</td>
+      <td>Above-average</td>
+    </tr>
+    <tr>
+      <td>RIFFQUAL</td>
+      <td>11.000000</td>
+      <td>HigherBetter</td>
+      <td>49.440299</td>
+      <td>Moderate (40–75th)</td>
+      <td>Below-average</td>
+    </tr>
+    <tr>
+      <td>VEL_DPTH</td>
+      <td>10.000000</td>
+      <td>HigherBetter</td>
+      <td>48.829016</td>
+      <td>Moderate (40–75th)</td>
+      <td>Below-average</td>
+    </tr>
+    <tr>
+      <td>BANKSTAB</td>
+      <td>11.000000</td>
+      <td>HigherBetter</td>
+      <td>48.620690</td>
+      <td>Moderate (40–75th)</td>
+      <td>Below-average</td>
+    </tr>
+    <tr>
+      <td>HabitatComplexity_0_1</td>
+      <td>0.642857</td>
+      <td>HigherBetter</td>
+      <td>46.427079</td>
+      <td>Moderate (40–75th)</td>
+      <td>Below-average</td>
+    </tr>
+    <tr>
+      <td>EPI_SUB</td>
+      <td>11.000000</td>
+      <td>HigherBetter</td>
+      <td>43.834197</td>
+      <td>Moderate (40–75th)</td>
+      <td>Below-average</td>
+    </tr>
+    <tr>
+      <td>INSTRHAB</td>
+      <td>11.000000</td>
+      <td>HigherBetter</td>
+      <td>36.746114</td>
+      <td>Low (&lt;40th)</td>
+      <td>Below-average</td>
+    </tr>
+    <tr>
+      <td>SHADING</td>
+      <td>65.000000</td>
+      <td>HigherBetter</td>
+      <td>34.120083</td>
+      <td>Low (&lt;40th)</td>
+      <td>Below-average</td>
+    </tr>
+    <tr>
+      <td>WOOD_DEB</td>
+      <td>2.000000</td>
+      <td>HigherBetter</td>
+      <td>32.127261</td>
+      <td>Low (&lt;40th)</td>
+      <td>Below-average</td>
+    </tr>
+    <tr>
+      <td>RIP_WID</td>
+      <td>0.000000</td>
+      <td>HigherBetter</td>
+      <td>19.921875</td>
+      <td>Low (&lt;40th)</td>
+      <td>Low</td>
+    </tr>
+    <tr>
+      <td>StreamHealthScore_0_100</td>
+      <td>38.185617</td>
+      <td>HigherBetter</td>
+      <td>5.510355</td>
+      <td>Low (&lt;40th)</td>
+      <td>Low</td>
+    </tr>
+  </tbody>
+</table>
+  </div>
+
+  <div class="card">
+    <h2>Water chemistry (expanded)</h2>
+    <table class='tbl'><tr><th>Metric</th><th>Value</th><th>Status</th><th>Statewide percentile</th></tr><tr><td>pH</td><td>7.39</td><td>OK (6.5–8.5)</td><td>74.5</td></tr><tr><td>Dissolved Oxygen (mg/L)</td><td>9.90</td><td>OK (≥6 mg/L)</td><td>93.8</td></tr><tr><td>TN</td><td>NA</td><td>Missing</td><td>NA</td></tr><tr><td>TP</td><td>NA</td><td>Missing</td><td>NA</td></tr><tr><td>NO3</td><td>1.740</td><td>High (&gt;1.34)</td><td>62.6</td></tr><tr><td>Conductivity</td><td>NA</td><td>Missing</td><td>NA</td></tr><tr><td>Turbidity</td><td>NA</td><td>Missing</td><td>NA</td></tr></table><div class='muted'>Chemistry source: C:/Users/wbayou/Documents/Documents - Copy/STream Restoration Dissertation/FINAL/MBSS_Master_Full.csv<br/>Nutrients/ions/turbidity are treated as lower-is-better when thresholds exist. pH/DO use general freshwater screening.</div>
+  </div>
+
+  <div class="card full">
+    <h2>Relative importance plots (compact)</h2>
+    <div class='thumb-grid' style='grid-template-columns: repeat(4, 1fr);'><a class='thumb' href='figs/fi_state_bibi.png' target='_blank' title='fi_state_bibi.png'><img style='height:80px;' src='figs/fi_state_bibi.png'/></a><a class='thumb' href='figs/fi_province_bibi.png' target='_blank' title='fi_province_bibi.png'><img style='height:80px;' src='figs/fi_province_bibi.png'/></a><a class='thumb' href='figs/fi_mde8_bibi.png' target='_blank' title='fi_mde8_bibi.png'><img style='height:80px;' src='figs/fi_mde8_bibi.png'/></a></div>
+  </div>
+
+  <div class="card full">
+    <h2>Thresholds (State / Province / Local / Site)</h2>
+    <table border="1" class="dataframe tbl">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Stressor</th>
+      <th>State_thr</th>
+      <th>Prov_thr</th>
+      <th>Local_thr</th>
+      <th>Site_value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>LandUse__IMPSURF</td>
+      <td>0.000000</td>
+      <td>0.412618</td>
+      <td>0.726776</td>
+      <td>0.0675</td>
+    </tr>
+    <tr>
+      <td>LandUse__FOREST</td>
+      <td>29.046855</td>
+      <td>50.943042</td>
+      <td>16.740000</td>
+      <td>39.2700</td>
+    </tr>
+    <tr>
+      <td>WaterChemistry__COND_FLD</td>
+      <td>314.307692</td>
+      <td>419.078718</td>
+      <td>170.000000</td>
+      <td>150.0000</td>
+    </tr>
+    <tr>
+      <td>Habitat__BANKSTAB</td>
+      <td>2.000000</td>
+      <td>5.000000</td>
+      <td>6.000000</td>
+      <td>11.0000</td>
+    </tr>
+    <tr>
+      <td>Habitat__EMBEDDED</td>
+      <td>30.769231</td>
+      <td>28.701538</td>
+      <td>35.000000</td>
+      <td>20.0000</td>
+    </tr>
+    <tr>
+      <td>WaterChemistry__TN</td>
+      <td>0.861139</td>
+      <td>3.161222</td>
+      <td>1.832000</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <td>WaterChemistry__NO3_LAB</td>
+      <td>0.029026</td>
+      <td>3.972042</td>
+      <td>1.339000</td>
+      <td>1.7400</td>
+    </tr>
+    <tr>
+      <td>WaterChemistry__TP</td>
+      <td>0.077345</td>
+      <td>0.013138</td>
+      <td>0.012300</td>
+      <td>NaN</td>
+    </tr>
+    <tr>
+      <td>WaterChemistry__TURB_FLD</td>
+      <td>9.484615</td>
+      <td>3.930769</td>
+      <td>1.800000</td>
+      <td>NaN</td>
+    </tr>
+  </tbody>
+</table>
+    <div class="muted">These are model-derived “breakpoints/targets” used by the PDP/threshold logic (not arbitrary fixed values).</div>
+  </div>
+
+  <div class="card full">
+    <h2>Key concerns (site vs thresholds)</h2>
+    <ul><li>Habitat__EMBEDDED: site 20 worse than threshold 35 (higher-is-better)</li><li>WaterChemistry__NO3_LAB: site 1.74 worse than threshold 1.34 (lower-is-better)</li></ul>
+  </div>
+
+  <div class="card full">
+    <h2>Scenario analysis (top bundles)</h2>
+    <table border="1" class="dataframe tbl">
+  <thead>
+    <tr style="text-align: right;">
+      <th>Scenario</th>
+      <th>Pred_Priority</th>
+      <th>Delta</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>S2 Nutrients (TN + NO3 + TP)</td>
+      <td>4.172778</td>
+      <td>-0.000556</td>
+    </tr>
+    <tr>
+      <td>S1 Sediment &amp; substrate (bank stability + embeddedness + turbidity)</td>
+      <td>4.172222</td>
+      <td>-0.001111</td>
+    </tr>
+    <tr>
+      <td>S3 Ions (conductivity + ANC + sulfate)</td>
+      <td>4.172222</td>
+      <td>-0.001111</td>
+    </tr>
+    <tr>
+      <td>S5 Pressure (impervious/ag/rowcrop/lowurb toward favorable; capped)</td>
+      <td>4.161111</td>
+      <td>-0.012222</td>
+    </tr>
+    <tr>
+      <td>S4 Riparian buffering (forest + rip width + shading)</td>
+      <td>4.153333</td>
+      <td>-0.020000</td>
+    </tr>
+  </tbody>
+</table>
+  </div>
+
+  <div class="card full">
+    <h2>Management recommendations</h2>
+    <ul><li>Sediment/substrate: control upstream erosion sources first; then consider targeted riffle/substrate enhancement and bank stabilization where needed.</li><li>Nutrient signal: strengthen riparian uptake + source control (fertilizer management, septic/WW inputs, agricultural BMPs where relevant).</li></ul>
+  </div>
+
+  <div class="card full">
+    <h2>Details (tails)</h2>
+    <div class="muted">Region stdout tail</div>
+    <pre class="scroll">):
+| Elevation Drop | BIBI Change | Interpretation                         |
+| -------------- | ----------- | -------------------------------------- |
+| Large ↓        | BIBI ↓      | Natural energy + stressor accumulation |
+| Small ↓        | BIBI ↓      | Likely urban/chemical stressors        |
+| Large ↓        | BIBI ↑      | Habitat recovery / forested reach      |
+| Small ↓        | BIBI ↑      | Restoration or buffering effect        |
+
+=== 6. Models (statewide XGB/RF, province RF, MDE8 RF, LOCAL_KNN RF) ===
+Statewide XGB BIBI model trained on 5557 rows, 198 features.
+Province RF model trained (HARD) for PD on n=1344.
+WARNING: MDE8 RF trained (SOFT, n=25). Expect noisier FI/thresholds.
+Statewide XGB predicted BIBI: 3.846
+Province RF predicted BIBI: 4.182
+MDE8 RF predicted BIBI: 4.173
+Combined BIBI prediction (local-priority): 4.173
+
+=== 7. Feature importance (BIBI) ===
+Top external drivers (STATEWIDE, BIBI):
+                     feature  importance      type
+             LandUse__LOWURB    0.104505  Land use
+    WaterChemistry__COND_LAB    0.046079 Chemistry
+WaterChemistry__SAMP_WQT_FLD    0.029934 Chemistry
+           LandUse__DECIDFOR    0.025257  Land use
+           LandUse__WOODYWET    0.023356  Land use
+            LandUse__IMPSURF    0.022678  Land use
+      WaterChemistry__PH_LAB    0.019706 Chemistry
+                      LOWURB    0.017155  Land use
+            Habitat__RIP_WID    0.015439   Habitat
+              LandUse__WATER    0.014873  Land use
+
+Top external drivers (PROVINCE, BIBI):
+                 feature  importance      type
+         LandUse__LOWURB    0.211046  Land use
+                  LOWURB    0.204885  Land use
+       LandUse__DECIDFOR    0.036851  Land use
+          LandUse__WATER    0.035914  Land use
+ WaterChemistry__SO4_LAB    0.024342 Chemistry
+WaterChemistry__COND_LAB    0.022126 Chemistry
+       LandUse__WOODYWET    0.021396  Land use
+ WaterChemistry__ANC_LAB    0.021353 Chemistry
+                WOODYWET    0.020826  Land use
+                  FOREST    0.019132  Land use
+
+Top external drivers (MDE8, BIBI):
+                feature  importance      type
+      Habitat__EMBEDDED    0.158221   Habitat
+       LandUse__ACREAGE    0.097810  Land use
+ WaterChemistry__DO_FLD    0.088352 Chemistry
+        LandUse__FOREST    0.047275  Land use
+                 FOREST    0.038679  Land use
+     WaterChemistry__TN    0.038314 Chemistry
+         LandUse__URBAN    0.031998  Land use
+ WaterChemistry__PH_FLD    0.029063 Chemistry
+      Habitat__RIFFQUAL    0.020285   Habitat
+WaterChemistry__ANC_LAB    0.019810 Chemistry
+
+FI plots saved in: C:/Users/wbayou/Documents/Documents - Copy/STream Restoration Dissertation/FINAL/Middle_Patuxent_River
+
+=== 8. PDP thresholds (state vs province vs local, BIBI) ===
+Core stressor thresholds (BIBI: State / Province / Local / Site):
+                Stressor  State_thr   Prov_thr  Local_thr  Site_value
+        LandUse__IMPSURF   0.000000   0.412618   0.726776      0.0675
+         LandUse__FOREST  29.046855  50.943042  16.740000     39.2700
+WaterChemistry__COND_FLD 314.307692 419.078718 170.000000    150.0000
+       Habitat__BANKSTAB   2.000000   5.000000   6.000000     11.0000
+       Habitat__EMBEDDED  30.769231  28.701538  35.000000     20.0000
+      WaterChemistry__TN   0.861139   3.161222   1.832000         NaN
+ WaterChemistry__NO3_LAB   0.029026   3.972042   1.339000      1.7400
+      WaterChemistry__TP   0.077345   0.013138   0.012300         NaN
+WaterChemistry__TURB_FLD   9.484615   3.930769   1.800000         NaN
+
+=== 8b. PDP plots (priority drivers + core stressors) ===
+PDP plots saved: 14  (folder: C:/Users/wbayou/Documents/Documents - Copy/STream Restoration Dissertation/FINAL/Middle_Patuxent_River/pdp)
+
+=== 9. Scenario analysis (simple, local-first) ===
+Priority model used: MDE8 2131106
+
+Baseline (priority) : 4.173
+
+SCENARIO RATIONALE (how targets are chosen)
+--------------------------------------------------------------------------------------------
+These scenario adjustments do NOT apply a fixed % reduction.
+For each stressor, the script selects a target value from the PRIORITY reference population
+(MDE8 2131106). The target is typically the LOWER QUARTILE (25th percentile) for 'lower-is-better'
+stressors (e.g., nutrients, turbidity), or the UPPER QUARTILE (75th percentile) for 'higher-is-better'
+variables (e.g., bank stability, riparian width).
+
+DIRECTIONAL SAFETY:
+  - pct=75 variables are increase-only (never recommend decreasing FOREST, RIP_WID, SHADING, etc.).
+  - pct=25 variables are decrease-only (never recommend increasing IMPSURF/ISC, nutrients, turbidity, etc.).
+
+ION SAFETY RULE: For ionic/salt indicators (e.g., conductivity, chloride, sulfate), the script NEVER
+recommends an increase. Targets use a low-salt benchmark: the 10th percentile (or an optional floor),
+and are additionally clamped so proposed ≤ current.
+
+Interpretation: A reported ΔBIBI (e.g., +0.021) means that moving the specified variables to those
+regional percentile targets increased the PRIORITY model’s predicted BIBI by 0.021 points.
+
+S2 Nutrients (TN + NO3 + TP)                                           : 4.173  (Δ -0.001)
+  Applied changes (current → target | rule):
+    WaterChemistry__TP           0.018 → 0.015  | pct=25; clamp: decrease-only
+
+S1 Sediment &amp; substrate (bank stability + embeddedness + turbidity)    : 4.172  (Δ -0.001)
+  Applied changes (current → target | rule):
+    Habitat__BANKSTAB            11.000 → 12.000  | pct=75; clamp: increase-only
+    WaterChemistry__TURB_FLD     4.800 → 2.400  | pct=25; clamp: decrease-only
+
+S3 Ions (conductivity + ANC + sulfate)                                 : 4.172  (Δ -0.001)
+  Applied changes (current → target | rule):
+    WaterChemistry__COND_FLD     150.000 → 141.600  | ion target=10th pct; clamp: no-increase
+    WaterChemistry__ANC_LAB      585.500 → 539.800  | pct=25; clamp: decrease-only
+    WaterChemistry__SO4_LAB      8.850 → 5.690  | ion target=10th pct; clamp: no-increase
+
+S5 Pressure (impervious/ag/rowcrop/lowurb toward favorable; capped)    : 4.161  (Δ -0.012)
+  Applied changes (current → target | rule):
+    LandUse__IMPSURF             0.068 → 0.000  | pct=25; clamp: decrease-only
+    IMPSURF                      0.068 → 0.000  | pct=25; clamp: decrease-only
+    LandUse__AGRI                59.400 → 53.249  | pct=25; clamp: decrease-only
+    AGRI                         59.400 → 53.249  | pct=25; clamp: decrease-only
+    LandUse__ROWCROP             18.200 → 15.000  | pct=25; clamp: decrease-only
+    ROWCROP                      18.200 → 15.000  | pct=25; clamp: decrease-only
+
+S4 Riparian buffering (forest + rip width + shading)                   : 4.153  (Δ -0.020)
+  Applied changes (current → target | rule):
+    Habitat__RIP_WID             0.000 → 50.000  | pct=75; clamp: increase-only
+    Habitat__SHADING             65.000 → 90.000  | pct=75; clamp: increase-only
+
+
+BEST (combined bundles): S2 + S1 + S3                                  : 4.171  (Δ -0.003)
+
+  Combined bundle applied changes (current → target | rule):
+    WaterChemistry__TP           0.018 → 0.015  | pct=25; clamp: decrease-only
+    Habitat__BANKSTAB            11.000 → 12.000  | pct=75; clamp: increase-only
+    WaterChemistry__TURB_FLD     4.800 → 2.400  | pct=25; clamp: decrease-only
+    WaterChemistry__COND_FLD     150.000 → 141.600  | ion target=10th pct; clamp: no-increase
+    WaterChemistry__ANC_LAB      585.500 → 539.800  | pct=25; clamp: decrease-only
+    WaterChemistry__SO4_LAB      8.850 → 5.690  | ion target=10th pct; clamp: no-increase
+
+What changed in BEST (top 10 actual moves):
+  - WaterChemistry__ANC_LAB: 585.500 → 539.800
+  - WaterChemistry__COND_FLD: 150.000 → 141.600
+  - Habitat__RIFFQUAL: 11.000 → 15.000
+  - WaterChemistry__SO4_LAB: 8.850 → 5.690
+  - WaterChemistry__TURB_FLD: 4.800 → 2.400
+  - Habitat__BANKSTAB: 11.000 → 12.000
+  - WaterChemistry__TP: 0.018 → 0.015
+
+Scenario CSV saved to: C:/Users/wbayou/Documents/Documents - Copy/STream Restoration Dissertation/FINAL/Middle_Patuxent_River/scenario_uplift_site_bibi.csv
+Bundles ranking saved to: C:/Users/wbayou/Documents/Documents - Copy/STream Restoration Dissertation/FINAL/Middle_Patuxent_River/scenario_bundles_ranked.csv
+BEST changes saved to: C:/Users/wbayou/Documents/Documents - Copy/STream Restoration Dissertation/FINAL/Middle_Patuxent_River/best_scenario_changes.csv
+Greedy steps saved to: C:/Users/wbayou/Documents/Documents - Copy/STream Restoration Dissertation/FINAL/Middle_Patuxent_River/greedy_steps_priority_model.txt
+Scenario feature-change table saved to: C:/Users/wbayou/Documents/Documents - Copy/STream Restoration Dissertation/FINAL/Middle_Patuxent_River/scenario_bundle_changes.csv
+Interpretation report saved to: C:/Users/wbayou/Documents/Documents - Copy/STream Restoration Dissertation/FINAL/Middle_Patuxent_River/interpretation_report.txt
+
+PDP folder: C:/Users/wbayou/Documents/Documents - Copy/STream Restoration Dissertation/FINAL/Middle_Patuxent_River/pdp
+=== DONE ===
+
+</pre>
+    <div class="muted">Hydrology stdout tail</div>
+    <pre class="scroll">
+--- MD Hydrology Engine v5.2 + Region/MBSS Context (ADDED interpretation) ---
+
+Latitude (decimal degrees): Longitude (decimal degrees): 
+Requesting StreamStats watershed (MD)...
+  Saved parameter table: C:/Users/wbayou/Documents/Documents - Copy/STream Restoration Dissertation/FINAL/StreamStats_params_MD_39.19516_-76.94196.csv
+  StreamStats base used: https://streamstats.usgs.gov/streamstatsservices
+  pointIndexingMethod  : RAINDROP
+
+Basin characteristics (StreamStats):
+  DRNAREA  : 2.700 sq mi
+  IMP      : 2.780 %   (LC11IMP/IMPERV)
+  FOREST   : 12.100 %
+  PRECIP   : 45.100 in/yr
+  LIME     : 0.000 %
+  SOILCorD : 27.300 %
+  SLOPE    : 0.054300 ft/ft  (prefers BSLDEM10ff)
+
+Discharge estimates:
+
+*** ERROR ***
+'charmap' codec can't encode character '/u2248' in position 8: character maps to &lt;undefined&gt;
+</pre>
+  </div>
+
+</div>
+</body>
+</html>
