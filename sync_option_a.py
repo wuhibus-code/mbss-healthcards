@@ -2,17 +2,60 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+r"""
+Option A Sync Script (Robust) — MBSS HealthCards → GitHub Pages repo
+===================================================================
+
+What it does
+------------
+Given an export folder (--src), it will:
+  - Ensure repo structure:
+      ./index.html
+      ./data/sites.geojson
+      ./data/healthcards/
+  - Copy healthcard HTML + images into ./data/healthcards/
+  - Copy sites.geojson into ./data/sites.geojson (or generate a 1-site stub if missing)
+  - Optionally clean old repo outputs (--clean)
+  - Optionally git commit/push (--commit --push)
+
+Supports 2 common export styles:
+  A) Full package export already structured:
+       src/index.html
+       src/data/sites.geojson
+       src/data/healthcards/*.html + *.png
+  B) One-site export (your current case):
+       src/HealthCard.html
+       src/**/pdp_*.png, fi_*.png, etc in subfolders
+     -> script will place:
+       repo/data/healthcards/<SITEYR>.html (SITEYR inferred from HTML)
+       repo/data/sites.geojson (copied if found; else generated stub if lat/lon provided)
+
+Run examples (from repo folder):
+  python sync_option_a.py --src "C:\...\ONE_SITE_EXPORT" --commit --push --message "Update 1 site"
+  python sync_option_a.py --src "C:\...\HealthCard_Exports" --clean --commit --push --message "Update all sites"
+
+If you need stub GeoJSON generation:
+  python sync_option_a.py --src "C:\...\ONE_SITE_EXPORT" --lat 39.35986 --lon -77.3092 --commit --push
+
+Notes
+-----
+- Close any browser tabs holding repo files (index.html) to avoid WinError 32.
+"""
+
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
-import sys
-import time
 from pathlib import Path
+from datetime import datetime
 
 
-def run(cmd, cwd: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:
+# -----------------------------
+# helpers
+# -----------------------------
+def run(cmd, cwd: Path | None = None, check=True) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=check, text=True, capture_output=True)
 
 
@@ -20,278 +63,231 @@ def safe_mkdir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
 
-def safe_unlink(p: Path) -> None:
-    try:
-        if p.is_file() or p.is_symlink():
+def rm_tree(p: Path) -> None:
+    if p.exists():
+        shutil.rmtree(p, ignore_errors=True)
+
+
+def rm_file(p: Path) -> None:
+    if p.exists():
+        try:
             p.unlink()
-    except FileNotFoundError:
-        return
-
-
-def safe_rmtree(p: Path) -> None:
-    if not p.exists():
-        return
-    shutil.rmtree(p, ignore_errors=True)
+        except PermissionError:
+            # last resort
+            try:
+                os.chmod(p, 0o666)
+                p.unlink()
+            except Exception:
+                pass
 
 
 def copy_file(src: Path, dst: Path) -> None:
     safe_mkdir(dst.parent)
-    # Avoid copying file onto itself
-    try:
-        if src.resolve() == dst.resolve():
-            return
-    except Exception:
-        pass
-
-    # Windows can lock files if open in browser/editor; retry a bit.
-    last_err = None
-    for _ in range(6):
-        try:
-            shutil.copy2(str(src), str(dst))
-            return
-        except PermissionError as e:
-            last_err = e
-            time.sleep(0.35)
-
-    raise PermissionError(
-        f"PermissionError copying:\n  src={src}\n  dst={dst}\n"
-        f"Close any browser tab/editor that is viewing the destination file, then re-run."
-    ) from last_err
+    # write to temp then replace to avoid partial copy issues
+    tmp = dst.with_suffix(dst.suffix + ".tmp")
+    if tmp.exists():
+        rm_file(tmp)
+    shutil.copy2(str(src), str(tmp))
+    if dst.exists():
+        rm_file(dst)
+    tmp.replace(dst)
 
 
-def copy_tree_flat(src_dir: Path, patterns: list[str], dst_dir: Path) -> int:
-    """Copy matching files from src_dir (non-recursive) into dst_dir. Returns count."""
-    n = 0
-    for pat in patterns:
-        for f in src_dir.glob(pat):
-            if f.is_file():
-                copy_file(f, dst_dir / f.name)
-                n += 1
-    return n
+def copy_tree(src_dir: Path, dst_dir: Path) -> None:
+    safe_mkdir(dst_dir)
+    for p in src_dir.rglob("*"):
+        if p.is_dir():
+            continue
+        rel = p.relative_to(src_dir)
+        copy_file(p, dst_dir / rel)
 
 
-def find_first(src_root: Path, rel_candidates: list[Path]) -> Path | None:
-    """Return first existing path among candidates under src_root."""
-    for rel in rel_candidates:
-        p = src_root / rel
-        if p.exists() and p.is_file():
+def find_first(root: Path, name: str) -> Path | None:
+    # case-insensitive match
+    target = name.lower()
+    for p in root.rglob("*"):
+        if p.is_file() and p.name.lower() == target:
             return p
     return None
 
 
-def build_single_site_geojson(
-    out_path: Path,
-    siteyr: str,
-    lon: float,
-    lat: float,
-    stream: str | None,
-    year: int | None,
-    bibi: float | None,
-    fibi: float | None,
-    mde8: str | None,
-    dnr12dig: str | None,
-    province: str | None,
-    healthcard_url: str,
-) -> None:
+def find_all_pngs(root: Path) -> list[Path]:
+    return [p for p in root.rglob("*.png") if p.is_file()]
+
+
+def infer_siteyr_from_html(html_text: str) -> str | None:
+    # common SITEYR patterns: ABCD-123-R-2016 or LMON-345-R-2016 etc
+    m = re.search(r"\b([A-Z0-9]{3,}-\d{1,4}-[A-Z]-\d{4})\b", html_text)
+    if m:
+        return m.group(1)
+    return None
+
+
+def build_stub_geojson(siteyr: str, lat: float, lon: float, healthcard_url: str) -> dict:
+    # GeoJSON coordinates are [lon, lat]
     feat = {
         "type": "Feature",
         "properties": {
             "SITEYR": siteyr,
-            "STREAMNAME": stream or "",
-            "YEAR": year if year is not None else None,
-            "BIBI": bibi if bibi is not None else None,
-            "FIBI": fibi if fibi is not None else None,
-            "MDE8": mde8 or "",
-            "DNR12DIG": dnr12dig or "",
-            "PROVINCE": province or "",
             "HEALTHCARD_URL": healthcard_url,
         },
         "geometry": {"type": "Point", "coordinates": [lon, lat]},
     }
-    gj = {"type": "FeatureCollection", "features": [feat]}
-    safe_mkdir(out_path.parent)
-    out_path.write_text(json.dumps(gj, indent=2), encoding="utf-8")
+    return {"type": "FeatureCollection", "features": [feat]}
 
 
-def git_is_repo(repo: Path) -> bool:
-    return (repo / ".git").exists()
+def git_available(repo: Path) -> bool:
+    try:
+        run(["git", "--version"], cwd=repo, check=True)
+        return True
+    except Exception:
+        return False
 
 
-def git_status(repo: Path) -> str:
-    cp = run(["git", "status"], cwd=repo, check=False)
-    return cp.stdout + (("\n" + cp.stderr) if cp.stderr else "")
-
-
-def git_add_commit_push(repo: Path, message: str, do_commit: bool, do_push: bool) -> None:
-    if not git_is_repo(repo):
-        print("[ERROR] This folder is not a git repo (missing .git). Run inside the cloned repo folder.")
-        sys.exit(2)
-
-    run(["git", "add", "-A"], cwd=repo)
-
-    # If nothing staged, don’t commit
-    diff = run(["git", "diff", "--cached", "--name-only"], cwd=repo, check=False).stdout.strip()
-    if not diff:
-        print("[GIT] No changes staged. Nothing to commit.")
+def git_commit_push(repo: Path, message: str, do_push: bool) -> None:
+    run(["git", "add", "-A"], cwd=repo, check=True)
+    # commit even if nothing changed? avoid failure
+    st = run(["git", "status", "--porcelain"], cwd=repo, check=True).stdout.strip()
+    if not st:
+        print("[GIT] No changes to commit.")
         return
-
-    if do_commit:
-        run(["git", "commit", "-m", message], cwd=repo)
-        print("[GIT] Commit created.")
-    else:
-        print("[GIT] Changes staged (no commit requested).")
-
+    run(["git", "commit", "-m", message], cwd=repo, check=True)
     if do_push:
-        print("info: if prompted, complete authentication in your browser...")
-        run(["git", "push"], cwd=repo)
-        print("[GIT] Pushed to origin.")
+        # this may trigger browser auth
+        run(["git", "push"], cwd=repo, check=True)
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser(description="Option A: Sync MBSS HealthCard exports into GitHub Pages repo.")
-    ap.add_argument("--src", required=True, help="Export folder containing HealthCard.html and PNGs (and optionally sites.geojson).")
-    ap.add_argument("--repo", default=".", help="Path to the cloned mbss-healthcards repo (default: current folder).")
-
-    ap.add_argument("--clean", action="store_true", help="Remove old repo/data/healthcards/* (except .keep) and repo/data/sites.geojson before copying.")
-    ap.add_argument("--commit", action="store_true", help="Commit changes after syncing.")
-    ap.add_argument("--push", action="store_true", help="Push after committing.")
-    ap.add_argument("--message", default="Update MBSS HealthCards", help="Commit message.")
-
-    # If your export folder has NO sites.geojson, we can create a 1-site geojson automatically:
-    ap.add_argument("--siteyr", default=None, help="SITEYR for the single-site export (e.g., LMON-345-R-2016).")
-    ap.add_argument("--lat", type=float, default=None, help="Latitude for the single site.")
-    ap.add_argument("--lon", type=float, default=None, help="Longitude for the single site.")
-
-    ap.add_argument("--stream", default=None, help="Stream name (optional).")
-    ap.add_argument("--year", type=int, default=None, help="Year (optional).")
-    ap.add_argument("--bibi", type=float, default=None, help="BIBI (optional).")
-    ap.add_argument("--fibi", type=float, default=None, help="FIBI (optional).")
-    ap.add_argument("--mde8", default=None, help="MDE8 (optional).")
-    ap.add_argument("--dnr12dig", default=None, help="DNR12DIG (optional).")
-    ap.add_argument("--province", default=None, help="Province (optional).")
-
+# -----------------------------
+# main sync logic
+# -----------------------------
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--src", required=True, help="Export folder path (full package export OR one-site folder)")
+    ap.add_argument("--repo", default=".", help="Repo path (default: current folder)")
+    ap.add_argument("--clean", action="store_true", help="Remove old repo/data/healthcards/* and repo/data/sites.geojson before copying")
+    ap.add_argument("--commit", action="store_true", help="Git commit after syncing")
+    ap.add_argument("--push", action="store_true", help="Git push after commit (requires --commit)")
+    ap.add_argument("--message", default=None, help="Commit message")
+    ap.add_argument("--lat", type=float, default=None, help="Latitude for stub GeoJSON if sites.geojson is missing")
+    ap.add_argument("--lon", type=float, default=None, help="Longitude for stub GeoJSON if sites.geojson is missing")
     args = ap.parse_args()
 
-    src = Path(args.src).expanduser()
-    repo = Path(args.repo).expanduser()
+    src = Path(args.src).expanduser().resolve()
+    repo = Path(args.repo).expanduser().resolve()
 
-    if not src.exists() or not src.is_dir():
-        print(f"[ERROR] Export folder does not exist: {src}")
-        sys.exit(2)
+    if not src.exists():
+        raise SystemExit(f"[ERROR] Export folder does not exist: {src}")
+    if not (repo / ".git").exists():
+        raise SystemExit(f"[ERROR] Repo folder does not look like a git repo (no .git): {repo}")
 
-    # Target structure in repo
-    repo_data = repo / "data"
-    repo_hc = repo_data / "healthcards"
-    repo_sites = repo_data / "sites.geojson"
+    data_dir = repo / "data"
+    hc_dir = data_dir / "healthcards"
+    sites_dst = data_dir / "sites.geojson"
 
-    safe_mkdir(repo_hc)
+    safe_mkdir(hc_dir)
 
     if args.clean:
-        print("[CLEAN] Removing old healthcards in repo/data/healthcards ...")
-        for f in repo_hc.glob("*"):
-            if f.name == ".keep":
-                continue
-            if f.is_dir():
-                safe_rmtree(f)
-            else:
-                safe_unlink(f)
-        print("[CLEAN] Removing repo/data/sites.geojson ...")
-        safe_unlink(repo_sites)
+        print(f"[CLEAN] Removing old healthcards in {hc_dir} ...")
+        rm_tree(hc_dir)
+        safe_mkdir(hc_dir)
+        print(f"[CLEAN] Removing {sites_dst} ...")
+        rm_file(sites_dst)
 
-    # --------- Copy HealthCard HTML ----------
-    # Accept several common export layouts:
-    #  A) src/HealthCard.html
-    #  B) src/data/healthcards/*.html
-    #  C) src/*.html (single)
-    hc_html = find_first(src, [Path("HealthCard.html")])
+    # Detect export style A (full structure) vs B (one-site)
+    index_src = (src / "index.html") if (src / "index.html").exists() else None
+    sites_src = (src / "data" / "sites.geojson") if (src / "data" / "sites.geojson").exists() else None
+    hc_src_dir = (src / "data" / "healthcards") if (src / "data" / "healthcards").exists() else None
 
-    copied_any_html = False
-    if hc_html:
-        # Rename HealthCard.html to SITEYR.html if provided
-        if args.siteyr:
-            dst_name = f"{args.siteyr}.html"
-        else:
-            dst_name = "HealthCard.html"
-        print(f"[COPY] {hc_html} -> {repo_hc / dst_name}")
-        copy_file(hc_html, repo_hc / dst_name)
-        copied_any_html = True
+    # Also allow site file anywhere in src
+    if sites_src is None:
+        sites_src = find_first(src, "sites.geojson")
 
-    # Copy any other HTMLs that might exist in src root
-    n_html_root = copy_tree_flat(src, ["*.html", "*.htm"], repo_hc)
-    if n_html_root:
-        copied_any_html = True
+    one_site_html = None
+    if hc_src_dir is None:
+        # common name in your workflow
+        one_site_html = (src / "HealthCard.html") if (src / "HealthCard.html").exists() else None
+        if one_site_html is None:
+            # any html in root as fallback
+            htmls = [p for p in src.glob("*.html") if p.is_file()]
+            if htmls:
+                # prefer a file with "health" in the name
+                htmls_sorted = sorted(htmls, key=lambda p: ("health" not in p.name.lower(), p.name.lower()))
+                one_site_html = htmls_sorted[0]
 
-    # Copy htmls if export already has data/healthcards
-    src_hc_folder = src / "data" / "healthcards"
-    if src_hc_folder.exists() and src_hc_folder.is_dir():
-        for f in src_hc_folder.glob("*.html"):
-            print(f"[COPY] {f} -> {repo_hc / f.name}")
-            copy_file(f, repo_hc / f.name)
-            copied_any_html = True
-
-    if not copied_any_html:
-        print("[WARN] No HealthCard HTML found in export folder.")
-        print("       Expected at least HealthCard.html or *.html.")
-        # Still continue for png/geojson if present.
-
-    # --------- Copy PNGs ----------
-    # Copy PNGs from src root and src/data/healthcards if present
-    n_png_root = copy_tree_flat(src, ["*.png"], repo_hc)
-    n_png_hc = 0
-    if src_hc_folder.exists() and src_hc_folder.is_dir():
-        n_png_hc = copy_tree_flat(src_hc_folder, ["*.png"], repo_hc)
-
-    print(f"[OK] Copied PNGs: {n_png_root + n_png_hc}")
-
-    # --------- sites.geojson ----------
-    # Preferred: use export’s sites.geojson if provided
-    src_sites = find_first(src, [Path("data/sites.geojson"), Path("sites.geojson")])
-    if src_sites:
-        print(f"[COPY] {src_sites} -> {repo_sites}")
-        copy_file(src_sites, repo_sites)
+    # 1) index.html
+    # Only copy index.html from src if it exists; otherwise keep repo's existing index.html
+    if index_src is not None:
+        print(f"[COPY] {index_src} -> {repo / 'index.html'}")
+        copy_file(index_src, repo / "index.html")
     else:
-        # If not available, auto-create a 1-site geojson (requires siteyr, lat, lon)
-        if args.siteyr and (args.lat is not None) and (args.lon is not None):
-            # ensure the healthcard filename matches what we placed
-            hc_filename = f"{args.siteyr}.html"
-            healthcard_url = f"data/healthcards/{hc_filename}"
-            print(f"[BUILD] Creating single-site geojson -> {repo_sites}")
-            build_single_site_geojson(
-                out_path=repo_sites,
-                siteyr=args.siteyr,
-                lon=args.lon,
-                lat=args.lat,
-                stream=args.stream,
-                year=args.year,
-                bibi=args.bibi,
-                fibi=args.fibi,
-                mde8=args.mde8,
-                dnr12dig=args.dnr12dig,
-                province=args.province,
-                healthcard_url=healthcard_url,
-            )
+        if not (repo / "index.html").exists():
+            raise SystemExit("[ERROR] repo/index.html is missing AND src/index.html is missing.")
+        print("[INFO] Using existing repo/index.html (src did not provide one).")
+
+    # 2) healthcards content
+    if hc_src_dir is not None:
+        print(f"[SYNC] Copying healthcards folder: {hc_src_dir} -> {hc_dir}")
+        copy_tree(hc_src_dir, hc_dir)
+    elif one_site_html is not None:
+        print(f"[SYNC] One-site export detected: {one_site_html}")
+
+        html_text = one_site_html.read_text(encoding="utf-8", errors="ignore")
+        siteyr = infer_siteyr_from_html(html_text) or f"SITE-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        dst_html_name = f"{siteyr}.html"
+        dst_html = hc_dir / dst_html_name
+
+        print(f"[COPY] {one_site_html} -> {dst_html}")
+        copy_file(one_site_html, dst_html)
+
+        # copy all pngs under src recursively into repo/data/healthcards
+        pngs = find_all_pngs(src)
+        if pngs:
+            print(f"[SYNC] Copying {len(pngs)} PNG(s) into {hc_dir} ...")
+            for p in pngs:
+                copy_file(p, hc_dir / p.name)
         else:
-            print("[WARN] data/sites.geojson not found in export folder.")
-            print("       Provide it OR pass --siteyr --lat --lon to auto-create a 1-site geojson.")
-            # Create an empty valid geojson so the site won’t throw JSON parse errors
-            safe_mkdir(repo_sites.parent)
-            repo_sites.write_text(json.dumps({"type": "FeatureCollection", "features": []}, indent=2), encoding="utf-8")
+            print("[WARN] No PNGs found under --src. The HealthCard may show broken images.")
 
-    # --------- Ensure .keep exists (optional) ----------
-    keep = repo_hc / ".keep"
-    if not keep.exists():
-        keep.write_text("", encoding="utf-8")
+        # If sites.geojson is missing, we can generate a 1-site stub if lat/lon provided
+        if sites_src is None:
+            if args.lat is not None and args.lon is not None:
+                stub = build_stub_geojson(
+                    siteyr=siteyr,
+                    lat=float(args.lat),
+                    lon=float(args.lon),
+                    healthcard_url=f"data/healthcards/{dst_html_name}",
+                )
+                safe_mkdir(sites_dst.parent)
+                sites_dst.write_text(json.dumps(stub, indent=2), encoding="utf-8")
+                print(f"[GEN] Created stub GeoJSON: {sites_dst}")
+            else:
+                print("[WARN] No sites.geojson found in --src, and no --lat/--lon provided.")
+                print("       Map may show 'Data load error' or have no clickable points.")
+    else:
+        raise SystemExit("[ERROR] Could not find src/data/healthcards/ nor a HealthCard HTML file to sync.")
 
-    # --------- Git commit/push ----------
-    print("\n[GIT] Status (before):")
-    print(git_status(repo))
+    # 3) sites.geojson copy if available (and not already generated)
+    if sites_src is not None:
+        print(f"[COPY] {sites_src} -> {sites_dst}")
+        copy_file(sites_src, sites_dst)
 
-    if args.commit or args.push:
-        git_add_commit_push(repo, args.message, do_commit=args.commit, do_push=args.push)
+    print("\n[OK] Sync complete.")
 
-    print("\nNext check:")
-    print("  - Open: https://wuhibus-code.github.io/mbss-healthcards/")
-    print("  - If you don’t see updates immediately, hard refresh (Ctrl+F5).")
+    # 4) git commit/push
+    if args.commit:
+        if not git_available(repo):
+            raise SystemExit("[ERROR] git is not available in PATH. Install Git for Windows and retry.")
+        msg = args.message or "Update MBSS HealthCards"
+        print("\n[GIT] Committing...")
+        git_commit_push(repo, msg, do_push=args.push)
+        print("\n[GIT] Done.")
+
+        print("\nNext check:")
+        print("  - Open: https://wuhibus-code.github.io/mbss-healthcards/")
+        print("  - Hard refresh: Ctrl+F5")
+        print("  - If points don’t appear: ensure data/sites.geojson exists and is valid JSON.")
+    else:
+        print("\n[GIT] Skipped (no --commit).")
 
 
 if __name__ == "__main__":
