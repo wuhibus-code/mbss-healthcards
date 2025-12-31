@@ -1,12 +1,183 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>MBSS HealthCards</title>
+
+  <!-- Leaflet (map library) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body { margin:0; font-family: Arial, Helvetica, sans-serif; }
+    #app { display:flex; height:100vh; width:100vw; }
+    #map { flex: 1 1 auto; }
+    #panel {
+      width: 380px;
+      max-width: 45vw;
+      border-left: 1px solid #ddd;
+      padding: 14px 14px 18px 14px;
+      overflow-y:auto;
+      background:#fff;
+    }
+    .title { font-size: 18px; font-weight: 700; margin: 0 0 8px 0; }
+    .sub { color:#555; font-size: 13px; margin: 0 0 14px 0; }
+    .kv { display:grid; grid-template-columns: 140px 1fr; gap: 8px 10px; margin: 10px 0; }
+    .k { color:#666; font-size: 12px; }
+    .v { font-size: 13px; }
+    .badge { display:inline-block; padding: 3px 8px; border-radius: 999px; font-size: 12px; border:1px solid #ccc; }
+    .btn {
+      display:inline-block; margin-top: 10px; padding: 8px 10px;
+      border:1px solid #1f6feb; border-radius: 8px; text-decoration:none;
+      color:#1f6feb; font-weight:600; font-size: 13px;
+    }
+    .small { font-size: 12px; color:#666; }
+    .legend { margin-top: 14px; border-top: 1px solid #eee; padding-top: 10px; }
+    .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:middle; border:1px solid #3333; }
+  </style>
 </head>
+
 <body>
-  <h1>MBSS HealthCards</h1>
-  <p>GitHub Pages is live.</p>
-  <p>Interactive map and ecological health cards coming next.</p>
+<div id="app">
+  <div id="map"></div>
+
+  <div id="panel">
+    <div class="title">MBSS HealthCards</div>
+    <div class="sub">
+      Click a site point to load the HealthCard summary.
+      <br><span class="small">Data file: <code>data/sites.geojson</code></span>
+    </div>
+
+    <div id="card">
+      <div class="small">No site selected yet.</div>
+    </div>
+
+    <div class="legend">
+      <div class="small"><b>Point styling (example)</b></div>
+      <div class="small"><span class="dot" style="background:#2ecc71;"></span>Higher BIBI</div>
+      <div class="small"><span class="dot" style="background:#f1c40f;"></span>Mid BIBI</div>
+      <div class="small"><span class="dot" style="background:#e74c3c;"></span>Lower BIBI</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- Map init (center Maryland-ish; you can change) ---
+  const map = L.map('map').setView([39.0, -76.8], 8);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // --- Helper: numeric safe parse ---
+  const num = (x) => {
+    const v = Number(x);
+    return Number.isFinite(v) ? v : null;
+  };
+
+  // --- Example: color by BIBI (edit thresholds to your scale) ---
+  function colorByBibi(bibi) {
+    const v = num(bibi);
+    if (v === null) return '#6c757d';
+    if (v >= 3.5) return '#2ecc71';
+    if (v >= 2.5) return '#f1c40f';
+    return '#e74c3c';
+  }
+
+  function gradeBadgeFromBibi(bibi) {
+    const v = num(bibi);
+    if (v === null) return { label: 'NA', border:'#999', bg:'#f5f5f5' };
+    if (v >= 3.5) return { label: 'Good', border:'#2ecc71', bg:'#e9f7ef' };
+    if (v >= 2.5) return { label: 'Fair', border:'#f1c40f', bg:'#fef9e7' };
+    return { label: 'Poor', border:'#e74c3c', bg:'#fdecea' };
+  }
+
+  // --- Render the right-side HealthCard panel ---
+  function renderCard(p) {
+    const siteyr = p.SITEYR ?? '(unknown)';
+    const stream = p.STREAMNAME ?? p.Stream ?? '';
+    const year = p.YEAR ?? p.SiteYear ?? '';
+    const mde8 = p.MDE8 ?? '';
+    const dnr12 = p.DNR12DIG ?? '';
+    const bibi = p.BIBI ?? p.bibi ?? p["MBSS-BIBI95_23__bibi_05"] ?? '';
+    const fibi = p.FIBI ?? p.fibi ?? '';
+    const prov = p.PROVINCE ?? p.Physio ?? '';
+
+    const g = gradeBadgeFromBibi(bibi);
+
+    // Optional: if you have full per-site pages under /data/healthcards/
+    // Put a property like: p.HEALTHCARD_URL = "data/healthcards/LMON-345-R-2016.html"
+    const url = p.HEALTHCARD_URL ?? null;
+
+    const badge = `<span class="badge" style="border-color:${g.border}; background:${g.bg};">${g.label}</span>`;
+
+    document.getElementById('card').innerHTML = `
+      <div class="title">${siteyr} ${badge}</div>
+      <div class="sub">${stream ? stream : ''}</div>
+
+      <div class="kv">
+        <div class="k">BIBI</div><div class="v"><b>${bibi ?? ''}</b></div>
+        <div class="k">FIBI</div><div class="v"><b>${fibi ?? ''}</b></div>
+        <div class="k">Year</div><div class="v">${year ?? ''}</div>
+        <div class="k">Province</div><div class="v">${prov ?? ''}</div>
+        <div class="k">MDE8</div><div class="v">${mde8 ?? ''}</div>
+        <div class="k">DNR12DIG</div><div class="v">${dnr12 ?? ''}</div>
+      </div>
+
+      ${url ? `<a class="btn" href="${url}" target="_blank" rel="noopener">Open full HealthCard</a>` : `
+        <div class="small">
+          Tip: add <code>HEALTHCARD_URL</code> in your GeoJSON properties to link a full page/PDF.
+        </div>
+      `}
+    `;
+  }
+
+  // --- Load your sites GeoJSON ---
+  fetch('data/sites.geojson')
+    .then(r => {
+      if (!r.ok) throw new Error(`Failed to load data/sites.geojson (HTTP ${r.status})`);
+      return r.json();
+    })
+    .then(geo => {
+      const layer = L.geoJSON(geo, {
+        pointToLayer: (feature, latlng) => {
+          const p = feature.properties || {};
+          const bibi = p.BIBI ?? p.bibi ?? p["MBSS-BIBI95_23__bibi_05"];
+          return L.circleMarker(latlng, {
+            radius: 6,
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.85,
+            color: '#3333',
+            fillColor: colorByBibi(bibi)
+          });
+        },
+        onEachFeature: (feature, lyr) => {
+          lyr.on('click', () => {
+            const p = feature.properties || {};
+            renderCard(p);
+          });
+
+          // Small hover tooltip (optional)
+          const p = feature.properties || {};
+          const label = p.SITEYR ?? p.SiteID ?? 'site';
+          lyr.bindTooltip(String(label), { sticky:true });
+        }
+      }).addTo(map);
+
+      // Zoom to data
+      try { map.fitBounds(layer.getBounds(), { padding:[20,20] }); } catch(e) {}
+    })
+    .catch(err => {
+      document.getElementById('card').innerHTML = `
+        <div style="color:#b00020; font-weight:700;">Data load error</div>
+        <div class="small">${err.message}</div>
+        <div class="small">Make sure you committed <code>data/sites.geojson</code> to the repo.</div>
+      `;
+      console.error(err);
+    });
+</script>
 </body>
 </html>
