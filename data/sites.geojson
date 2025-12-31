@@ -4,8 +4,11 @@
     {
       "type": "Feature",
       "properties": {
-        "SITEYR": "SITE-20251231084636",
-        "HEALTHCARD_URL": "data/healthcards/SITE-20251231084636.html"
+        "STREAMNAME": "PATUXENT",
+        "PROVINCE": "Piedmont Plateau Province",
+        "MDE8": "2131106",
+        "BIBI": 3.846,
+        "HEALTHCARD_URL": "data/healthcards/SITE-20251231090534.html"
       },
       "geometry": {
         "type": "Point",
