@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "SITEYR": "LMON-345-R-2016",
+        "STREAMNAME": "UPPER POTOMAC",
+        "YEAR": 2016,
+        "BIBI": 3.1,
+        "FIBI": 2.8,
+        "MDE8": "2140302",
+        "DNR12DIG": "21403020229",
+        "PROVINCE": "Piedmont Plateau Province",
+        "HEALTHCARD_URL": "data/healthcards/LMON-345-R-2016.html"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3092,
+          39.35986
+        ]
+      }
+    }
+  ]
+}
